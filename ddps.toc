@@ -1,0 +1,11 @@
+## interface: 90200
+
+## author: donage
+## title: Donage DPS
+## notes: Shows your damage dealt over the last few seconds -- use /ddps to configure.
+## version: one point zero point zero
+## savedvariables: ddps_config
+
+queue.lua
+locale.lua
+core.lua
