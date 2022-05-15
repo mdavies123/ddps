@@ -41,7 +41,6 @@ local fi_point     = true
 
 -- local handles for global functions
 local b_and         = bit.band
-local create_frame  = CreateFrame
 local get_cleu_info = CombatLogGetCurrentEventInfo
 local get_time      = GetTime
 local print         = print
@@ -61,7 +60,7 @@ local samples     = ddps_queue.new(1000)
 local damage      = 0.0
 local enabled     = true
 local format_base = "(%.2fK)"
-local frame       = create_frame("frame", "ddps_frame")
+local frame       = CreateFrame("frame", "ddps_frame")
 local options     = nil
 local l           = ddps_locale[GetLocale()] or ddps_locale["enUS"]
 local text        = frame:CreateFontString()
@@ -93,7 +92,8 @@ end
 
 local function drag_stop_handle(f)
   stop_moving_or_sizing(f)
-  options[fi_point] = { get_point(f) }
+  local pt = options[fi_point]
+  pt[1], pt[2], pt[3], pt[4], pt[5] = get_point(f)
 end
 
 local function lock_frame()
@@ -184,7 +184,7 @@ local function refresh_frame()
   set_font(text, options[fi_font], options[fi_size], options[fi_flags])
   set_parent(text, frame)
   set_point(text, center      , 0, 0)
-  local point = options[fi_point]
+  local point = options[fi_point] or { get_point(frame) }
   if point then
     set_point(frame, point[1], point[2], point[3], point[4], point[5])
   else
