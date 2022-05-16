@@ -12,7 +12,7 @@ ddps_locale["enUS"] = {
   message_font_dump           = "font config: %s = %s",
   message_font_size_lt0       = "font size must be greater than 0",
   message_font_unknown_field  = "unknown field: %s",
-  message_font_usage          = "usage: /ddps font <string> <string||number>",
+  message_font_usage          = "usage: /ddps font <field name> [<string||number>] -- values for <field name> are: font, flags, size",
   message_format_changed      = "format set to: %s",
   message_format_current      = "usage: /ddps format <string> -- format is currently %s",
   message_format_fail         = "could not set format: ",
