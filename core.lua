@@ -60,7 +60,6 @@ local type          = type
 
 -- state
 local config      = nil
-local samples     = ddps_queue.new(1000)
 local damage      = 0.0
 local div_by_1e3  = true
 local enabled     = true
@@ -208,6 +207,7 @@ end
 
 local function handle_addon_loaded(arg1) -- get saved variables and perform initial setup
   if arg1 ~= addon_name then return end
+  ddps_queue.new(1000)
   if ddps_config == nil then
     ddps_config, config, options = set_default_config()
   else
@@ -217,7 +217,7 @@ local function handle_addon_loaded(arg1) -- get saved variables and perform init
   enabled = config[ci_enabled]
   width = config[ci_width]
   div_by_1e3 = config[ci_div_by_1e3]
-  format_base = s_format("%s", config[ci_format_base])
+  format_base = s_format("%s", config[ci_format_base]) 
   refresh_frame()
 end
 
@@ -322,24 +322,6 @@ local function handle_div(args)
   end
 end
 
-local function handle_slash_command(c)
-  local _, _, cmd, args = s_find(c, "%s?(%w+)%s?(.*)") -- split string on space
-  local message = nil
-  if     cmd == command_font   then message = handle_font_update(args)
-  elseif cmd == command_format then message = handle_format_update(args)
-  elseif cmd == command_lock   then message = handle_lock(args)
-  elseif cmd == command_locale then message = handle_locale_update(args)
-  elseif cmd == command_toggle then message = handle_toggle_update(args)
-  elseif cmd == command_width  then message = handle_width_update(args)
-  elseif cmd == command_unlock then message = handle_unlock(args)
-  elseif cmd == command_reset  then message = handle_reset(args)
-  elseif cmd == command_div    then message = handle_div(args)
-  else
-    message = s_format(l.message_usage, command_usage_string)
-  end
-  print(message_prefix .. message)
-end
-
 local function is_affiliated_with_player(flags)
   return b_and(flags, flag_mine) ~= 0
 end
@@ -361,7 +343,8 @@ local function handle_cleu()
   end
   q_push(damage, time)
   local damage_lo, time_lo = q_first()
-  while time_lo  < (time - width) do -- filter stale samples
+  local tdiff = time - width
+  while time_lo < tdiff do -- filter stale samples
     damage_lo, time_lo = q_pop()
   end
   dps = (damage - damage_lo) / (time - time_lo)
@@ -379,18 +362,32 @@ local function handle_regen_enabled()
   hide_frame(frame)
 end
 
-local function handle_event(_, event, ...)
+register_event(frame, event_addon_loaded)
+set_script(frame, "OnEvent", function (_, event, ...) 
   if     event == event_combat_log_event_unfiltered then handle_cleu(...)
   elseif event == event_player_regen_enabled        then handle_regen_enabled(...)
   elseif event == event_player_regen_disabled       then handle_regen_disabled(...)
   elseif event == event_addon_loaded                then handle_addon_loaded(...)
   end
-end
-
-register_event(frame, event_addon_loaded)
-set_script(frame, "OnEvent", handle_event)
+end)
 
 SLASH_DDPS1 = "/ddps"
 SLASH_DDPS2 = "/donage"
 
-SlashCmdList["DDPS"] = handle_slash_command
+SlashCmdList["DDPS"] = function(c) 
+  local _, _, cmd, args = s_find(c, "%s?(%w+)%s?(.*)") -- split string on space
+  local message = nil
+  if     cmd == command_font   then message = handle_font_update(args)
+  elseif cmd == command_format then message = handle_format_update(args)
+  elseif cmd == command_lock   then message = handle_lock(args)
+  elseif cmd == command_locale then message = handle_locale_update(args)
+  elseif cmd == command_toggle then message = handle_toggle_update(args)
+  elseif cmd == command_width  then message = handle_width_update(args)
+  elseif cmd == command_unlock then message = handle_unlock(args)
+  elseif cmd == command_reset  then message = handle_reset(args)
+  elseif cmd == command_div    then message = handle_div(args)
+  else
+    message = s_format(l.message_usage, command_usage_string)
+  end
+  print(message_prefix .. message)
+end
