@@ -13,7 +13,7 @@ local command_lock   = "lock"
 local command_width  = "width"
 local command_toggle = "toggle"
 local command_unlock = "unlock"
-local command_usage_string = table.concat({ command_font, command_format, command_locale, command_lock, command_width, command_toggle, command_unlock }, "||")
+local command_usage_string = table.concat({ command_font, command_format, command_locale, command_lock, command_width, command_toggle, command_unlock }, " || ")
 local empty = ""
 
 local event_addon_loaded                = "ADDON_LOADED"
@@ -216,9 +216,12 @@ end
 
 local function handle_font_update(args) -- configures some `frame_options` settings
   local _, _, field, value = s_find(args, "%s?(%w+)%s?(.*)")
-  if (field == nil) or (value == nil) then return l.message_font_usage
-  elseif options[field] == nil then return s_format(l.message_font_unknown_field, field)
-  elseif value == empty then return s_format(l.message_font_dump, field, tostring(options[field]))
+  if field == nil then
+    return l.message_font_usage
+  elseif options[field] == nil then
+    return s_format(l.message_font_unknown_field, field)
+  elseif (vakue == nil) or (value == empty) then
+    return s_format(l.message_font_dump, field, tostring(options[field]))
   elseif field == fi_size then
     local v = tonumber(value)
     if v == nil then
@@ -235,7 +238,7 @@ local function handle_font_update(args) -- configures some `frame_options` setti
 end
 
 local function handle_format_update(args) -- configures `format_base`
-  if (args == nil) or (args == empty) then
+  if (args == nil) or (args == empty) then 
     return s_format(l.message_format_current, format_base)
   elseif set_format(args) then
     if options[fi_draggable] then
@@ -250,7 +253,9 @@ end
 local function handle_lock(args)
   lock_frame()
   set_text(text, empty)
-  if not enabled then hide_frame(frame) end
+  if not enabled then 
+    hide_frame(frame) 
+  end
   return l.message_locked_frame
 end
 
@@ -274,14 +279,20 @@ end
 local function handle_unlock(args)
   unlock_frame()
   set_text(text, "%s", format_base)
-  if not enabled then show_frame(frame) end
+  if not enabled then 
+    show_frame(frame) 
+  end
   return l.message_unlocked_frame
 end
 
 local function handle_locale_update(args)
-  args = args or get_locale()
+  if (args == nil) or (args == empty) then
+    args = get_locale()
+  end 
   local tmp = ddps_locale[args]
-  if tmp == nil then return s_format(l.message_locale_fail, args) end
+  if tmp == nil then 
+    return s_format(l.message_locale_fail, args) 
+  end
   l = tmp
   return s_format(l.message_locale_success, args)
 end
@@ -315,7 +326,7 @@ end
 
 local function handle_cleu()
   local time, subevent, _, _, _, flags, _, _, _, _, _, dam_swing, _, _, dam_spell = get_cleu_info()
-  if (not is_affiliated_with_player(flags)) or (not has_damage_payload(subevent)) then return end
+  if (not has_damage_payload(subevent)) or (not is_affiliated_with_player(flags)) then return end
   if dam_spell then
     damage = damage + dam_spell
   else
