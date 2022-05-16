@@ -14,7 +14,7 @@ local command_width  = "width"
 local command_reset  = "reset"
 local command_toggle = "toggle"
 local command_unlock = "unlock"
-local command_usage_string = table.concat({ command_font, command_format, command_locale, command_lock, command_width, command_toggle, command_unlock }, " || ")
+local command_usage_string = table.concat({ command_font, command_format, command_locale, command_lock, command_reset, command_width, command_toggle, command_unlock }, " || ")
 local empty = ""
 
 local event_addon_loaded                = "ADDON_LOADED"
@@ -301,6 +301,7 @@ end
 
 local function handle_reset(args)
   ddps_config, config, options = set_default_config()
+  return s_format("%s", l.message_reset)
 end
 
 local function handle_slash_command(c)

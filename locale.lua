@@ -22,6 +22,7 @@ ddps_locale["enUS"] = {
   message_locked_frame        = "locked frame",
   message_enabled             = "enabled",
   message_disabled            = "disabled",
+  message_reset               = "reset",
   message_width_changed       = "sample width set to: %.2f seconds",
   message_width_current       = "usage: /ddps width <number> -- sample width is currently %.2f seconds",
   message_unlocked_frame      = "unlocked frame",
