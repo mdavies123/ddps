@@ -185,7 +185,7 @@ local function refresh_frame()
   set_height(frame, 30)
   set_font(text, options[fi_font], options[fi_size], options[fi_flags])
   set_parent(text, frame)
-  set_point(text, center      , 0, 0)
+  set_point(text, center, 0, 0)
   local point = options[fi_point]
   if point then
     set_point(frame, point[1] or center, point[2] or 0, point[3] or 0, point[4], point[5])
@@ -210,7 +210,7 @@ local function handle_addon_loaded(arg1) -- get saved variables and perform init
     options = ddps_config[ci_options]
   end
   enabled = config[ci_enabled]
-  width = config[ci_width]
+  width = config[ci_width] 
   format_base = s_format("%s", config[ci_format_base])
   refresh_frame()
 end
@@ -322,7 +322,7 @@ local function handle_slash_command(c)
 end
 
 local function is_affiliated_with_player(flags)
-  return b_and(flags, flag_mine) > 0
+  return b_and(flags, flag_mine) ~= 0
 end
 
 local function has_damage_payload(subevent)
