@@ -3,7 +3,7 @@
 ## author: donage
 ## title: Donage DPS
 ## notes: Shows your damage dealt over the last few seconds -- use /ddps to configure.
-## version: 1.0.1a
+## version: 1.0.1b
 ## savedvariables: ddps_config
 
 queue.lua
