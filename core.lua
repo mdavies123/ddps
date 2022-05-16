@@ -94,8 +94,7 @@ end
 
 local function drag_stop_handle(f)
   stop_moving_or_sizing(f)
-  local pt = options[fi_point]
-  pt[1], pt[2], pt[3], pt[4], pt[5] = get_point(f)
+  options[fi_point] = { get_point(f) }
 end
 
 local function lock_frame()
@@ -119,7 +118,7 @@ local function set_default_config() -- returns copies of default config tables
   fo[fi_flags] = "outline"
   fo[fi_size] = 10
   set_point(frame, center)
-  fo[fi_point] = get_point(frame)
+  fo[fi_point] = { get_point(frame) }
   fo[fi_draggable] = false
   return t, t, fo
 end
@@ -187,9 +186,9 @@ local function refresh_frame()
   set_font(text, options[fi_font], options[fi_size], options[fi_flags])
   set_parent(text, frame)
   set_point(text, center      , 0, 0)
-  local point = options[fi_point] or { get_point(frame) }
+  local point = options[fi_point]
   if point then
-    set_point(frame, point[1], point[2], point[3], point[4], point[5])
+    set_point(frame, point[1] or center, point[2] or 0, point[3] or 0, point[4], point[5])
   else
     set_point(frame, center, 0, 0)
   end
@@ -282,7 +281,8 @@ local function handle_unlock(args)
   unlock_frame()
   set_text(text, "%s", format_base)
   if not enabled then 
-    show_frame(frame) 
+    show_frame(frame)
+    set_text(text, "%s", format_base)
   end
   return l.message_unlocked_frame
 end
