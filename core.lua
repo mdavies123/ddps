@@ -11,6 +11,7 @@ local command_format = "format"
 local command_locale = "locale"
 local command_lock   = "lock"
 local command_width  = "width"
+local command_reset  = "reset"
 local command_toggle = "toggle"
 local command_unlock = "unlock"
 local command_usage_string = table.concat({ command_font, command_format, command_locale, command_lock, command_width, command_toggle, command_unlock }, " || ")
@@ -298,6 +299,10 @@ local function handle_locale_update(args)
   return s_format(l.message_locale_success, args)
 end
 
+local function handle_reset(args)
+  ddps_config, config, options = set_default_config()
+end
+
 local function handle_slash_command(c)
   local _, _, cmd, args = s_find(c, "%s?(%w+)%s?(.*)") -- split string on space
   local message = nil
@@ -308,6 +313,7 @@ local function handle_slash_command(c)
   elseif cmd == command_toggle then message = handle_toggle_update(args)
   elseif cmd == command_width  then message = handle_width_update(args)
   elseif cmd == command_unlock then message = handle_unlock(args)
+  elseif cmd == command_reset  then message = handle_reset(args)
   else
     message = s_format(l.message_usage, command_usage_string)
   end
