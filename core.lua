@@ -14,7 +14,8 @@ local command_width  = "width"
 local command_reset  = "reset"
 local command_toggle = "toggle"
 local command_unlock = "unlock"
-local command_usage_string = table.concat({ command_font, command_format, command_locale, command_lock, command_reset, command_width, command_toggle, command_unlock }, " || ")
+local command_div    = "div"
+local command_usage_string = table.concat({ command_font, command_format, command_locale, command_lock, command_reset, command_width, command_toggle, command_unlock, command_div }, " || ")
 local empty = ""
 
 local event_addon_loaded                = "ADDON_LOADED"
@@ -34,6 +35,7 @@ local ci_enabled     = 1 -- config
 local ci_width       = 2
 local ci_format_base = 3
 local ci_options     = 4
+local ci_div_by_1e3  = 5
 local fi_draggable = 1   -- frame_options
 local fi_font      = "font"
 local fi_flags     = "flags"
@@ -60,11 +62,13 @@ local type          = type
 local config      = nil
 local samples     = ddps_queue.new(1000)
 local damage      = 0.0
+local div_by_1e3  = true
 local enabled     = true
 local format_base = "(%.2fK)"
 local frame       = CreateFrame("frame", "ddps_frame")
 local options     = nil
 local l           = ddps_locale[get_locale()] or ddps_locale["enUS"]
+local multiplier  = 1.0 / 1e3
 local text        = frame:CreateFontString()
 local width       = 5.0
 
@@ -114,6 +118,7 @@ local function set_default_config() -- returns copies of default config tables
     fo = {}
     t[ci_options] = fo
   end
+  t[ci_div_by_1e3] = true
   fo[fi_font] = "fonts/frizqt__.ttf"
   fo[fi_flags] = "outline"
   fo[fi_size] = 10
@@ -210,7 +215,8 @@ local function handle_addon_loaded(arg1) -- get saved variables and perform init
     options = ddps_config[ci_options]
   end
   enabled = config[ci_enabled]
-  width = config[ci_width] 
+  width = config[ci_width]
+  div_by_1e3 = config[ci_div_by_1e3]
   format_base = s_format("%s", config[ci_format_base])
   refresh_frame()
 end
@@ -301,7 +307,19 @@ end
 
 local function handle_reset(args)
   ddps_config, config, options = set_default_config()
-  return s_format("%s", l.message_reset)
+  return l.message_reset
+end
+
+local function handle_div(args)
+  div_by_1e3 = not div_by_1e3
+  config[ci_div_by_1e3] = div_by_1e3
+  if div_by_1e3 then
+    multiplier = 1.0 / 1e3
+    return l.message_div_enabled
+  else
+    multiplier = 1.0
+    return l.message_div_disabled
+  end
 end
 
 local function handle_slash_command(c)
@@ -315,6 +333,7 @@ local function handle_slash_command(c)
   elseif cmd == command_width  then message = handle_width_update(args)
   elseif cmd == command_unlock then message = handle_unlock(args)
   elseif cmd == command_reset  then message = handle_reset(args)
+  elseif cmd == command_div    then message = handle_div(args)
   else
     message = s_format(l.message_usage, command_usage_string)
   end
@@ -347,11 +366,12 @@ local function handle_cleu()
   end
   dps = (damage - damage_lo) / (time - time_lo)
   if validate_number_gt0(dps) then
-    set_text(text, format_base, dps / 1e3)
+    set_text(text, format_base, dps * multiplier)
   end 
 end
 
 local function handle_regen_disabled()
+  set_text(text, empty)
   show_frame(frame)
 end
 
