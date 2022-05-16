@@ -43,6 +43,7 @@ local fi_point     = true
 local b_and         = bit.band
 local get_cleu_info = CombatLogGetCurrentEventInfo
 local get_time      = GetTime
+local get_locale    = GetLocale
 local print         = print
 local q_first       = ddps_queue.first
 local q_pop         = ddps_queue.pop
@@ -62,7 +63,7 @@ local enabled     = true
 local format_base = "(%.2fK)"
 local frame       = CreateFrame("frame", "ddps_frame")
 local options     = nil
-local l           = ddps_locale[GetLocale()] or ddps_locale["enUS"]
+local l           = ddps_locale[get_locale()] or ddps_locale["enUS"]
 local text        = frame:CreateFontString()
 local width       = 5.0
 
@@ -215,12 +216,9 @@ end
 
 local function handle_font_update(args) -- configures some `frame_options` settings
   local _, _, field, value = s_find(args, "%s?(%w+)%s?(.*)")
-  if (field == nil) or (value == nil) then
-    return l.message_font_usage
-  elseif options[field] == nil then
-    return s_format(l.message_font_unknown_field, field)
-  elseif value == empty then
-    return s_format(l.message_font_dump, field, tostring(options[field]))
+  if (field == nil) or (value == nil) then return l.message_font_usage
+  elseif options[field] == nil then return s_format(l.message_font_unknown_field, field)
+  elseif value == empty then return s_format(l.message_font_dump, field, tostring(options[field]))
   elseif field == fi_size then
     local v = tonumber(value)
     if v == nil then
@@ -281,10 +279,10 @@ local function handle_unlock(args)
 end
 
 local function handle_locale_update(args)
-  if args == empty then return s_format(l.message_locale_dump, l.locale) end
+  args = args or get_locale()
   local tmp = ddps_locale[args]
   if tmp == nil then return s_format(l.message_locale_fail, args) end
-  l= tmp
+  l = tmp
   return s_format(l.message_locale_success, args)
 end
 
