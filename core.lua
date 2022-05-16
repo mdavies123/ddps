@@ -117,6 +117,7 @@ local function set_default_config() -- returns copies of default config tables
   fo[fi_font] = "fonts/frizqt__.ttf"
   fo[fi_flags] = "outline"
   fo[fi_size] = 10
+  set_point(frame, center)
   fo[fi_point] = get_point(frame)
   fo[fi_draggable] = false
   return t, t, fo
