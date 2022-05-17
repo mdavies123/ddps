@@ -307,6 +307,7 @@ end
 
 local function handle_reset(args)
   ddps_config, config, options = set_default_config()
+  refresh_frame()
   return l.message_reset
 end
 
