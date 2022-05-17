@@ -7,8 +7,8 @@
 ddps_locale = {}
 
 ddps_locale["enUS"] = {
-  message_div_enabled         = "divide by 1e3 enabled"
-  message_div_disabled        = "divide by 1e3 disabled"
+  message_div_enabled         = "divide by 1e3 enabled",
+  message_div_disabled        = "divide by 1e3 disabled",
   message_font_bad_conversion = "could not convert %s to a number",
   message_font_changed        = "%s set to %s",
   message_font_dump           = "font config: %s = %s",
