@@ -157,15 +157,15 @@ local function unregister_all_events()
   end
 end
 
-local function toggle() -- toggles event registration and frame show state
+local function toggle() -- toggles event registration
   enabled = not enabled
   config[ci_enabled] = enabled
   if enabled then
     register_all_events()
-    show_frame(frame)
   else
     unregister_all_events()
     hide_frame(frame)
+    q_clear()
   end
   return enabled
 end
@@ -174,7 +174,7 @@ local function unlock_frame()
   enable_mouse(frame, true)
   set_movable(frame, true)
   register_for_drag(frame, "leftbutton")
-  config[ci_options][fi_draggable] = true
+  options[fi_draggable] = true
 end
 
 local function refresh_frame()
@@ -210,14 +210,12 @@ end
 local function handle_addon_loaded(arg1) -- get saved variables and perform initial setup
   if arg1 ~= addon_name then return end
   ddps_queue.new(1000)
-  if ddps_config == nil then
-    ddps_config = get_default_config()
+  config = _G.ddps_config
+  if config == nil then
     config = get_default_config()
-    options = config[ci_options] 
-  else
-    config = ddps_config
-    options = ddps_config[ci_options]
+    _G.ddps_config = config
   end
+  options = config[ci_options]
   enabled = config[ci_enabled]
   width = config[ci_width]
   div_by_1e3 = config[ci_div_by_1e3]
@@ -310,8 +308,8 @@ local function handle_locale_update(args)
 end
 
 local function handle_reset(args)
-  ddps_config = get_default_config()
   config = get_default_config()
+  _G.ddps_config = config
   options = config[ci_options]
   refresh_frame()
   return l.message_reset
