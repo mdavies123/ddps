@@ -29,6 +29,7 @@ local message_prefix = addon_name .. " - "
 local number_t       = type(0.0)
 local center         = "CENTER"
 local string_t       = type("")
+local table_t        = type(_G)
 
 -- indices for consistent and quick table lookup
 local ci_enabled     = 1 -- config
@@ -99,7 +100,13 @@ end
 
 local function drag_stop_handle(f)
   stop_moving_or_sizing(f)
-  options[fi_point] = { get_point(f) }
+  local pt = options[fi_point]
+  if type(pt) ~= table_t then
+    pt = { get_point() }
+    options[fi_point] = pt
+  else
+    pt[1], pt[2], pt[3], pt[4], pt[5] = get_point(f)
+  end
 end
 
 local function lock_frame()
