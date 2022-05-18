@@ -360,9 +360,10 @@ end
 
 local function handle_regen_enabled()
   if not options[fi_draggable] then
-    ct_after(width, function() hide_frame(frame) end)
+    ct_after(width, function() hide_frame(frame); q_clear(); end)
+  else
+    q_clear()
   end
-  q_clear()
 end
 
 register_event(frame, event_addon_loaded)
