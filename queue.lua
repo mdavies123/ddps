@@ -4,8 +4,8 @@
 -- as long as you retain this notice, you can do whatever you want with this code
 -- if we meet someday, and you think this stuff is worth it, you can buy me a beer in return
 
-local first     = false
-local last      = true
+local first     = -1
+local last      = -1
 local damage    = false
 local time      = true
 local pool      = {}
@@ -46,4 +46,9 @@ function ddps_queue.push(d, t)
   local s = pool[last]
   s[damage] = d
   s[time] = t
+end
+
+function ddps_queue.clear()
+  first = 1
+  last = 0
 end

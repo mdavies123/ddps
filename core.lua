@@ -48,6 +48,7 @@ local get_cleu_info = CombatLogGetCurrentEventInfo
 local get_time      = GetTime
 local get_locale    = GetLocale
 local print         = print
+local q_clear       = ddps_queue.clear
 local q_first       = ddps_queue.first
 local q_pop         = ddps_queue.pop
 local q_push        = ddps_queue.push
@@ -361,6 +362,7 @@ end
 
 local function handle_regen_enabled()
   hide_frame(frame)
+  q_clear()
 end
 
 register_event(frame, event_addon_loaded)
