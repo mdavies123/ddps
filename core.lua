@@ -116,24 +116,20 @@ local function lock_frame()
   options[fi_draggable] = false
 end
 
-local function set_default_config() -- returns copies of default config tables
+local function get_default_config() -- returns copies of default config tables
   local t = {}
-  t[ci_enabled] = true
-  t[ci_width] = 5.0
-  t[ci_format_base] = "(%.2fk)"
-  local fo = t[ci_options]
-  if fo == nil then
-    fo = {}
-    t[ci_options] = fo
-  end
   t[ci_div_by_1e3] = true
+  t[ci_enabled] = true
+  t[ci_format_base] = "(%.2fk)"
+  t[ci_options] = {}
+  t[ci_width] = 5.0  
+  local fo = t[ci_options]
   fo[fi_font] = "fonts/frizqt__.ttf"
   fo[fi_flags] = "outline"
   fo[fi_size] = 10
-  set_point(frame, center)
-  fo[fi_point] = { get_point(frame) }
+  fo[fi_point] = { "center", 0, 0 }
   fo[fi_draggable] = false
-  return t, t, fo
+  return t
 end
 
 local function set_format(fmt)
@@ -215,7 +211,9 @@ local function handle_addon_loaded(arg1) -- get saved variables and perform init
   if arg1 ~= addon_name then return end
   ddps_queue.new(1000)
   if ddps_config == nil then
-    ddps_config, config, options = set_default_config()
+    ddps_config = get_default_config()
+    config = get_default_config()
+    options = config[ci_options] 
   else
     config = ddps_config
     options = ddps_config[ci_options]
@@ -312,7 +310,9 @@ local function handle_locale_update(args)
 end
 
 local function handle_reset(args)
-  ddps_config, config, options = set_default_config()
+  ddps_config = get_default_config()
+  config = get_default_config()
+  options = config[ci_options]
   refresh_frame()
   return l.message_reset
 end
