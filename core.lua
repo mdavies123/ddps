@@ -358,9 +358,14 @@ local function handle_regen_disabled()
   show_frame(frame)
 end
 
+local function delay_handle()
+  hide_frame(frame)
+  q_clear()
+end
+
 local function handle_regen_enabled()
   if not options[fi_draggable] then
-    ct_after(width, function() hide_frame(frame); q_clear(); end)
+    ct_after(width, delay_handle)
   else
     q_clear()
   end
