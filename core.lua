@@ -44,6 +44,7 @@ local fi_point     = true
 
 -- local handles for global functions
 local b_and         = bit.band
+local ct_after      = C_Timer.After
 local get_cleu_info = CombatLogGetCurrentEventInfo
 local get_time      = GetTime
 local get_locale    = GetLocale
@@ -128,12 +129,9 @@ local function set_default_config() -- returns copies of default config tables
   return t, t, fo
 end
 
-local function set_format(fmt) -- sets `format_base` with sanity checking
-  if type(fmt) == string_t then
-    format_base = s_format("%s", fmt)
-    config[ci_format_base] = s_format("%s", format_base)
-  end
-  return s_format("%s", format_base)
+local function set_format(fmt)
+  format_base = s_format("%s", fmt)
+  config[ci_format_base] = s_format("%s", format_base)
 end
 
 local function set_sample_width(w) -- sets `sample_width` with sanity checking
@@ -248,14 +246,14 @@ end
 local function handle_format_update(args) -- configures `format_base`
   if (args == nil) or (args == empty) then 
     return s_format(l.message_format_current, format_base)
-  elseif set_format(args) then
-    if options[fi_draggable] then
-      set_text(text, "%s", format_base)
-    end
-    return s_format(l.message_format_changed, args)
   else
     return l.message_format_fail .. args
   end
+  set_format(args)
+  if options[fi_draggable] then
+    set_text(text, "%s", format_base)
+  end
+  return s_format(l.message_format_changed, args)
 end
 
 local function handle_lock(args)
@@ -361,7 +359,9 @@ local function handle_regen_disabled()
 end
 
 local function handle_regen_enabled()
-  hide_frame(frame)
+  if not options[fi_draggable] then
+    ct_after(width, function() hide_frame(frame) end)
+  end
   q_clear()
 end
 
