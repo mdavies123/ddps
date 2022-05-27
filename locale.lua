@@ -7,12 +7,14 @@
 ddps_locale = {}
 
 ddps_locale["enUS"] = {
+  message_div_enabled         = "divide by 1e3 enabled",
+  message_div_disabled        = "divide by 1e3 disabled",
   message_font_bad_conversion = "could not convert %s to a number",
   message_font_changed        = "%s set to %s",
   message_font_dump           = "font config: %s = %s",
   message_font_size_lt0       = "font size must be greater than 0",
   message_font_unknown_field  = "unknown field: %s",
-  message_font_usage          = "usage: /ddps font <field name> [<string||number>] -- values for <field name> are: font, flags, size",
+  message_font_usage          = "usage: /ddps font <field name> [<string || number>] -- values for <field name> are: (font || flags || size)",
   message_format_changed      = "format set to: %s",
   message_format_current      = "usage: /ddps format <string> -- format is currently %s",
   message_format_fail         = "could not set format: ",
