@@ -355,6 +355,7 @@ local function handle_regen_enabled()
   else
     q_clear()
     damage = 0
+    set_text(text, "%s", format_base)
   end
 end
 
