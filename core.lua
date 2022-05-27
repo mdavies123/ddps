@@ -211,10 +211,10 @@ end
 local function handle_addon_loaded(arg1) -- get saved variables and perform initial setup
   if arg1 ~= addon_name then return end
   ddps_queue.new(1000)
-  config = _G.ddps_config
+  config = _G["ddps_config"]
   if config == nil then
     config = get_default_config()
-    _G.ddps_config = config
+    _G["ddps_config"] = config
   end
   options = config[ci_options]
   enabled = config[ci_enabled]
@@ -241,8 +241,7 @@ local function handle_font_update(args) -- configures some `frame_options` setti
 end
 
 local function handle_format_update(args) -- configures `format_base`
-  if (args == nil) or (args == empty) then return s_format(l.message_format_current, format_base)
-  else return l.message_format_fail .. args end
+  if (args == nil) or (args == empty) then return s_format(l.message_format_current, format_base) end
   set_format(args)
   if options[fi_draggable] then
     set_text(text, "%s", format_base)
@@ -291,13 +290,8 @@ local function handle_locale_update(args)
 end
 
 local function handle_reset(args)
-  local cfg_g = _G["ddps_config"]
-  for k,v in pairs(get_default_config()) do
-    config[k] = v
-    cfg_g[k] = v
-  end
-  options = config[ci_options]
-  refresh_frame()
+  _G["ddps_config"] = get_default_config()
+  handle_addon_loaded(addon_name)
   return l.message_reset
 end
 
@@ -352,6 +346,7 @@ end
 local function delay_handle()
   hide_frame(frame)
   q_clear()
+  damage = 0
 end
 
 local function handle_regen_enabled()
@@ -359,6 +354,7 @@ local function handle_regen_enabled()
     ct_after(width, delay_handle)
   else
     q_clear()
+    damage = 0
   end
 end
 
