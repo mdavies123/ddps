@@ -51,4 +51,7 @@ end
 function ddps_queue.clear()
   first = 1
   last = 0
+  local s = pool[first]
+  s[damage] = 0.0
+  s[time] = 0.0
 end

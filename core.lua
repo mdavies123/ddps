@@ -32,16 +32,16 @@ local string_t       = type("")
 local table_t        = type(_G)
 
 -- indices for consistent and quick table lookup
-local ci_enabled     = 1 -- config
-local ci_width       = 2
-local ci_format_base = 3
-local ci_options     = 4
-local ci_div_by_1e3  = 5
-local fi_draggable = 1   -- frame_options
+local ci_enabled     = "enabled" -- config
+local ci_width       = "width"
+local ci_format_base = "format_base"
+local ci_options     = "options"
+local ci_div_by_1e3  = "div_by_1e3"
+local fi_draggable = "draggable" -- frame_options
 local fi_font      = "font"
 local fi_flags     = "flags"
 local fi_size      = "size"
-local fi_point     = true
+local fi_point     = "point"
 
 -- local handles for global functions
 local b_and         = bit.band
@@ -56,7 +56,6 @@ local q_pop         = ddps_queue.pop
 local q_push        = ddps_queue.push
 local s_find        = string.find
 local s_format      = string.format
-local t_concat      = table.concat
 local tonumber      = tonumber
 local tostring      = tostring
 local type          = type
@@ -98,14 +97,19 @@ local function validate_number_gt0(n) -- filters wow's weird nan situation
   return (n > 0.0) and not (n < 0.0)
 end
 
-local function drag_stop_handle(f)
-  stop_moving_or_sizing(f)
+local function extract_args(cmd)
+  local _, _, c, a = s_find(cmd, "%s?(%w+)%s?(.*)") -- split string on space
+  return c, a
+end
+
+local function drag_stop_handle()
+  stop_moving_or_sizing(frame)
   local pt = options[fi_point]
   if type(pt) ~= table_t then
-    pt = { get_point() }
+    pt = { get_point(frame) }
     options[fi_point] = pt
   else
-    pt[1], pt[2], pt[3], pt[4], pt[5] = get_point(f)
+    pt[1], pt[2], pt[3], pt[4], pt[5] = get_point(frame)
   end
 end
 
@@ -165,8 +169,8 @@ local function toggle() -- toggles event registration
   else
     unregister_all_events()
     hide_frame(frame)
-    q_clear()
   end
+  q_clear()
   return enabled
 end
 
@@ -191,17 +195,14 @@ local function refresh_frame()
   set_height(frame, 30)
   set_font(text, options[fi_font], options[fi_size], options[fi_flags])
   set_parent(text, frame)
-  set_point(text, center, 0, 0)
   local point = options[fi_point]
-  if point then
-    set_point(frame, point[1] or center, point[2] or 0, point[3] or 0, point[4], point[5])
-  else
-    set_point(frame, center, 0, 0)
-  end
+  set_point(text, center, 0, 0)
+  set_point(frame, point[1] or center, point[2] or 0, point[3] or 0, point[4], point[5])
   set_script(frame, "OnDragStart", drag_start_handle)
   set_script(frame, "OnDragStop", drag_stop_handle)
   if options[fi_draggable] then
     unlock_frame()
+    set_text(text, "%s", format_base)
   else
     lock_frame()
   end
@@ -225,21 +226,14 @@ end
 
 local function handle_font_update(args) -- configures some `frame_options` settings
   local _, _, field, value = s_find(args, "%s?(%w+)%s?(.*)")
-  if field == nil then
-    return l.message_font_usage
-  elseif options[field] == nil then
-    return s_format(l.message_font_unknown_field, field)
-  elseif (vakue == nil) or (value == empty) then
-    return s_format(l.message_font_dump, field, tostring(options[field]))
+  if field == nil then return l.message_font_usage
+  elseif options[field] == nil then return s_format(l.message_font_unknown_field, field)
+  elseif (vakue == nil) or (value == empty) then return s_format(l.message_font_dump, field, tostring(options[field]))
   elseif field == fi_size then
     local v = tonumber(value)
-    if v == nil then
-      return s_format(l.message_font_bad_conversion, value)
-    elseif validate_number_gt0(v) then
-      value = v
-    else
-      return l.message_font_size_lt0
-    end
+    if v == nil then return s_format(l.message_font_bad_conversion, value)
+    elseif not validate_number_gt0(v) then return l.message_font_size_lt0 end
+    value = v
   end  
   options[field] = value
   set_font(text, options[fi_font], options[fi_size], options[fi_flags])
@@ -247,11 +241,8 @@ local function handle_font_update(args) -- configures some `frame_options` setti
 end
 
 local function handle_format_update(args) -- configures `format_base`
-  if (args == nil) or (args == empty) then 
-    return s_format(l.message_format_current, format_base)
-  else
-    return l.message_format_fail .. args
-  end
+  if (args == nil) or (args == empty) then return s_format(l.message_format_current, format_base)
+  else return l.message_format_fail .. args end
   set_format(args)
   if options[fi_draggable] then
     set_text(text, "%s", format_base)
@@ -270,11 +261,8 @@ end
 
 local function handle_toggle_update(args)
   toggle()
-  if enabled then
-    return l.message_enabled
-  else
-    return l.message_disabled
-  end
+  if enabled then return l.message_enabled
+  else return l.message_disabled end
 end
 
 local function handle_width_update(args)
@@ -288,28 +276,26 @@ end
 local function handle_unlock(args)
   unlock_frame()
   set_text(text, "%s", format_base)
-  if not enabled then 
-    show_frame(frame)
-    set_text(text, "%s", format_base)
-  end
+  show_frame(frame)
   return l.message_unlocked_frame
 end
 
 local function handle_locale_update(args)
   if (args == nil) or (args == empty) then
     args = get_locale()
-  end 
-  local tmp = ddps_locale[args]
-  if tmp == nil then 
-    return s_format(l.message_locale_fail, args) 
   end
+  local tmp = ddps_locale[args]
+  if tmp == nil then return s_format(l.message_locale_fail, args) end
   l = tmp
   return s_format(l.message_locale_success, args)
 end
 
 local function handle_reset(args)
-  config = get_default_config()
-  _G.ddps_config = config
+  local cfg_g = _G["ddps_config"]
+  for k,v in pairs(get_default_config()) do
+    config[k] = v
+    cfg_g[k] = v
+  end
   options = config[ci_options]
   refresh_frame()
   return l.message_reset
@@ -389,7 +375,7 @@ SLASH_DDPS1 = "/ddps"
 SLASH_DDPS2 = "/donage"
 
 SlashCmdList["DDPS"] = function(c) 
-  local _, _, cmd, args = s_find(c, "%s?(%w+)%s?(.*)") -- split string on space
+  local cmd, args = extract_args(c)
   local message = nil
   if     cmd == command_font   then message = handle_font_update(args)
   elseif cmd == command_format then message = handle_format_update(args)
