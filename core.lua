@@ -225,7 +225,7 @@ local function handle_addon_loaded(arg1) -- get saved variables and perform init
 end
 
 local function handle_font_update(args) -- configures some `frame_options` settings
-  local _, _, field, value = s_find(args, "%s?(%w+)%s?(.*)")
+  local field, value = extract_args(args)
   if field == nil then return l.message_font_usage
   elseif options[field] == nil then return s_format(l.message_font_unknown_field, field)
   elseif (vakue == nil) or (value == empty) then return s_format(l.message_font_dump, field, tostring(options[field]))
