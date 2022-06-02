@@ -67,9 +67,10 @@ local div_by_1e3  = true
 local enabled     = true
 local format_base = "(%.2fK)"
 local frame       = CreateFrame("frame", "ddps_frame")
-local options     = nil
 local l           = ddps_locale[get_locale()] or ddps_locale["enUS"]
 local multiplier  = 1.0 / 1e3
+local options     = nil
+local pool_size   = 8192
 local text        = frame:CreateFontString()
 local width       = 5.0
 
@@ -121,19 +122,24 @@ local function lock_frame()
 end
 
 local function get_default_config() -- returns copies of default config tables
-  local t = {}
-  t[ci_div_by_1e3] = true
-  t[ci_enabled] = true
-  t[ci_format_base] = "(%.2fk)"
-  t[ci_options] = {}
-  t[ci_width] = 5.0  
-  local fo = t[ci_options]
-  fo[fi_font] = "fonts/frizqt__.ttf"
-  fo[fi_flags] = "outline"
-  fo[fi_size] = 10
-  fo[fi_point] = { "center", 0, 0 }
-  fo[fi_draggable] = false
-  return t
+  return {
+    [ci_div_by_1e3] = true,
+    [ci_enabled] = true,
+    [ci_format_base] = "(%.2fk)",
+    [ci_options] = {
+      [fi_draggable] = false,
+      [fi_flags] = "outline",
+      [fi_font] = "fonts/frizqt__.ttf",
+      [fi_point] = { 
+        [1] = "center",
+        [2] = nil, 
+        [3] = 0, 
+        [4] = 0
+      },
+      [fi_size] = 10
+    },
+    [ci_width] = 5.0
+  }
 end
 
 local function set_format(fmt)
@@ -210,7 +216,7 @@ end
 
 local function handle_addon_loaded(arg1) -- get saved variables and perform initial setup
   if arg1 ~= addon_name then return end
-  ddps_queue.new(1000)
+  ddps_queue.new(pool_size)
   config = _G["ddps_config"]
   if config == nil then
     config = get_default_config()
@@ -265,9 +271,10 @@ local function handle_toggle_update(args)
 end
 
 local function handle_width_update(args)
-  local n = tonumber(args)
-  if n then
-    set_sample_width(n)
+  local w = tonumber(args)
+  if w and validate_number_gt0(w) then
+    width = w
+    config[ci_width] = w
   end
   return s_format(l.message_width_changed, width)
 end
@@ -307,19 +314,23 @@ local function handle_div(args)
   end
 end
 
-local function is_affiliated_with_player(flags)
-  return b_and(flags, flag_mine) ~= 0
+local function is_affiliated_with_player(f)
+  return b_and(f, flag_mine) ~= 0
 end
 
-local function has_damage_payload(subevent)
-  return (subevent == "SPELL_PERIODIC_DAMAGE")
-      or (subevent == "SPELL_DAMAGE")
-      or (subevent == "SWING_DAMAGE")
-      or (subevent == "RANGE_DAMAGE")
+local function has_damage_payload(s)
+  return (s == "SPELL_PERIODIC_DAMAGE")
+      or (s == "SPELL_DAMAGE")
+      or (s == "SWING_DAMAGE")
+      or (s == "RANGE_DAMAGE")
 end
+
+
+local time, subevent, flags, dam_swing, dam_spell, _
+local damage_lo, time_lo, tdiff
 
 local function handle_cleu()
-  local time, subevent, _, _, _, flags, _, _, _, _, _, dam_swing, _, _, dam_spell = get_cleu_info()
+  time, subevent, _, _, _, flags, _, _, _, _, _, dam_swing, _, _, dam_spell = get_cleu_info()
   if (not has_damage_payload(subevent)) or (not is_affiliated_with_player(flags)) then return end
   if dam_spell then
     damage = damage + dam_spell
@@ -327,8 +338,8 @@ local function handle_cleu()
     damage = damage + dam_swing
   end
   q_push(damage, time)
-  local damage_lo, time_lo = q_first()
-  local tdiff = time - width
+  damage_lo, time_lo = q_first()
+  tdiff = time - width
   while time_lo < tdiff do -- filter stale samples
     damage_lo, time_lo = q_pop()
   end
@@ -360,11 +371,11 @@ local function handle_regen_enabled()
 end
 
 register_event(frame, event_addon_loaded)
-set_script(frame, "OnEvent", function (_, event, ...) 
-  if     event == event_combat_log_event_unfiltered then handle_cleu(...)
-  elseif event == event_player_regen_enabled        then handle_regen_enabled(...)
-  elseif event == event_player_regen_disabled       then handle_regen_disabled(...)
-  elseif event == event_addon_loaded                then handle_addon_loaded(...)
+set_script(frame, "OnEvent", function (_, event, arg1) 
+  if     event == event_combat_log_event_unfiltered then handle_cleu()
+  elseif event == event_player_regen_enabled        then handle_regen_enabled()
+  elseif event == event_player_regen_disabled       then handle_regen_disabled()
+  elseif event == event_addon_loaded                then handle_addon_loaded(arg1)
   end
 end)
 
