@@ -197,7 +197,7 @@ local function refresh_frame()
   set_parent(text, frame)
   local point = options[fi_point]
   set_point(text, center, 0, 0)
-  set_point(frame, point[1] or center, point[2] or 0, point[3] or 0, point[4], point[5])
+  set_point(frame, point[1] or center, point[2], point[3] or 0, point[4], point[5])
   set_script(frame, "OnDragStart", drag_start_handle)
   set_script(frame, "OnDragStop", drag_stop_handle)
   if options[fi_draggable] then
