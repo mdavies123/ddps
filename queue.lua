@@ -22,8 +22,10 @@ function ddps_queue.new(size)
   last = 0
 end
 
+local s
+
 function ddps_queue.first()
-  local s = pool[first]
+  s = pool[first]
   return s[damage], s[time]
 end
 
@@ -33,7 +35,7 @@ function ddps_queue.pop()
   else
     first = first + 1
   end
-  local s = pool[first]
+  s = pool[first]
   return s[damage], s[time]
 end
 
@@ -43,7 +45,7 @@ function ddps_queue.push(d, t)
   else
     last = last + 1
   end
-  local s = pool[last]
+  s = pool[last]
   s[damage] = d
   s[time] = t
 end
@@ -51,7 +53,7 @@ end
 function ddps_queue.clear()
   first = 1
   last = 0
-  local s = pool[first]
+  s = pool[first]
   s[damage] = 0.0
   s[time] = 0.0
 end
