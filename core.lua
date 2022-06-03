@@ -1,6 +1,6 @@
 -- the donage-beerware license (version 69):
 --
--- donage-stormrage(us) wrote this code 
+-- donage-stormrage(us) wrote this code
 -- as long as you retain this notice, you can do whatever you want with this code
 -- if we meet someday, and you think this stuff is worth it, you can buy me a beer in return
 
@@ -145,14 +145,6 @@ end
 local function set_format(fmt)
   format_base = s_format("%s", fmt)
   config[ci_format_base] = s_format("%s", format_base)
-end
-
-local function set_sample_width(w) -- sets `sample_width` with sanity checking
-  if (type(w) == number_t) and validate_number_gt0(w) then
-    width = w
-    config[ci_width] = width
-  end
-  return width
 end
 
 local function register_all_events()
