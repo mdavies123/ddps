@@ -1,6 +1,6 @@
 -- the donage-beerware license (version 69):
 --
--- donage-stormrage(us) wrote this code 
+-- donage-stormrage(us) wrote this code
 -- as long as you retain this notice, you can do whatever you want with this code
 -- if we meet someday, and you think this stuff is worth it, you can buy me a beer in return
 
@@ -36,6 +36,7 @@ local ci_enabled     = "enabled" -- config
 local ci_width       = "width"
 local ci_format_base = "format_base"
 local ci_options     = "options"
+local ci_pool_size   = "pool_size"
 local ci_div_by_1e3  = "div_by_1e3"
 local fi_draggable = "draggable" -- frame_options
 local fi_font      = "font"
@@ -46,6 +47,7 @@ local fi_point     = "point"
 -- local handles for global functions
 local b_and         = bit.band
 local ct_after      = C_Timer.After
+local floor         = math.floor
 local get_cleu_info = CombatLogGetCurrentEventInfo
 local get_time      = GetTime
 local get_locale    = GetLocale
@@ -54,6 +56,7 @@ local q_clear       = ddps_queue.clear
 local q_first       = ddps_queue.first
 local q_pop         = ddps_queue.pop
 local q_push        = ddps_queue.push
+local pcall         = pcall
 local s_find        = string.find
 local s_format      = string.format
 local tonumber      = tonumber
@@ -67,9 +70,10 @@ local div_by_1e3  = true
 local enabled     = true
 local format_base = "(%.2fK)"
 local frame       = CreateFrame("frame", "ddps_frame")
-local options     = nil
 local l           = ddps_locale[get_locale()] or ddps_locale["enUS"]
 local multiplier  = 1.0 / 1e3
+local options     = nil
+local pool_size   = 8192
 local text        = frame:CreateFontString()
 local width       = 5.0
 
@@ -121,32 +125,30 @@ local function lock_frame()
 end
 
 local function get_default_config() -- returns copies of default config tables
-  local t = {}
-  t[ci_div_by_1e3] = true
-  t[ci_enabled] = true
-  t[ci_format_base] = "(%.2fk)"
-  t[ci_options] = {}
-  t[ci_width] = 5.0  
-  local fo = t[ci_options]
-  fo[fi_font] = "fonts/frizqt__.ttf"
-  fo[fi_flags] = "outline"
-  fo[fi_size] = 10
-  fo[fi_point] = { "center", 0, 0 }
-  fo[fi_draggable] = false
-  return t
+  return {
+    [ci_div_by_1e3] = true,
+    [ci_enabled] = true,
+    [ci_format_base] = "(%.2fk)",
+    [ci_options] = {
+      [fi_draggable] = false,
+      [fi_flags] = "outline",
+      [fi_font] = "fonts/frizqt__.ttf",
+      [fi_point] = { 
+        [1] = "center",
+        [2] = nil, 
+        [3] = 0, 
+        [4] = 0
+      },
+      [fi_size] = 10
+    },
+    [ci_pool_size] = 8192,
+    [ci_width] = 5.0
+  }
 end
 
 local function set_format(fmt)
   format_base = s_format("%s", fmt)
   config[ci_format_base] = s_format("%s", format_base)
-end
-
-local function set_sample_width(w) -- sets `sample_width` with sanity checking
-  if (type(w) == number_t) and validate_number_gt0(w) then
-    width = w
-    config[ci_width] = width
-  end
-  return width
 end
 
 local function register_all_events()
@@ -161,7 +163,7 @@ local function unregister_all_events()
   end
 end
 
-local function toggle() -- toggles event registration
+local function toggle() -- toggles event registration and frame state; clears queue
   enabled = not enabled
   config[ci_enabled] = enabled
   if enabled then
@@ -197,7 +199,7 @@ local function refresh_frame()
   set_parent(text, frame)
   local point = options[fi_point]
   set_point(text, center, 0, 0)
-  set_point(frame, point[1] or center, point[2] or 0, point[3] or 0, point[4], point[5])
+  set_point(frame, point[1] or center, point[2], point[3] or 0, point[4], point[5])
   set_script(frame, "OnDragStart", drag_start_handle)
   set_script(frame, "OnDragStop", drag_stop_handle)
   if options[fi_draggable] then
@@ -208,14 +210,14 @@ local function refresh_frame()
   end
 end
 
-local function handle_addon_loaded(arg1) -- get saved variables and perform initial setup
+local function handle_event_addon_loaded(arg1) -- get saved variables and perform initial setup
   if arg1 ~= addon_name then return end
-  ddps_queue.new(1000)
   config = _G["ddps_config"]
   if config == nil then
     config = get_default_config()
     _G["ddps_config"] = config
   end
+  ddps_queue.new(config[ci_pool_size])
   options = config[ci_options]
   enabled = config[ci_enabled]
   width = config[ci_width]
@@ -225,10 +227,10 @@ local function handle_addon_loaded(arg1) -- get saved variables and perform init
 end
 
 local function handle_font_update(args) -- configures some `frame_options` settings
-  local _, _, field, value = s_find(args, "%s?(%w+)%s?(.*)")
+  local field, value = extract_args(args)
   if field == nil then return l.message_font_usage
   elseif options[field] == nil then return s_format(l.message_font_unknown_field, field)
-  elseif (vakue == nil) or (value == empty) then return s_format(l.message_font_dump, field, tostring(options[field]))
+  elseif (value == nil) or (value == empty) then return s_format(l.message_font_dump, field, tostring(options[field]))
   elseif field == fi_size then
     local v = tonumber(value)
     if v == nil then return s_format(l.message_font_bad_conversion, value)
@@ -249,7 +251,7 @@ local function handle_format_update(args) -- configures `format_base`
   return s_format(l.message_format_changed, args)
 end
 
-local function handle_lock(args)
+local function handle_command_lock(args)
   lock_frame()
   set_text(text, empty)
   if not enabled then 
@@ -258,28 +260,28 @@ local function handle_lock(args)
   return l.message_locked_frame
 end
 
-local function handle_toggle_update(args)
-  toggle()
+local function handle_command_toggle()
   if enabled then return l.message_enabled
   else return l.message_disabled end
 end
 
-local function handle_width_update(args)
-  local n = tonumber(args)
-  if n then
-    set_sample_width(n)
+local function handle_command_width(args)
+  local w = tonumber(args)
+  if w and validate_number_gt0(w) then
+    width = w
+    config[ci_width] = w
   end
   return s_format(l.message_width_changed, width)
 end
 
-local function handle_unlock(args)
+local function handle_command_unlock(args)
   unlock_frame()
   set_text(text, "%s", format_base)
   show_frame(frame)
   return l.message_unlocked_frame
 end
 
-local function handle_locale_update(args)
+local function handle_command_locale(args)
   if (args == nil) or (args == empty) then
     args = get_locale()
   end
@@ -289,13 +291,13 @@ local function handle_locale_update(args)
   return s_format(l.message_locale_success, args)
 end
 
-local function handle_reset(args)
+local function handle_command_reset(args)
   _G["ddps_config"] = get_default_config()
-  handle_addon_loaded(addon_name)
+  handle_event_addon_loaded(addon_name)
   return l.message_reset
 end
 
-local function handle_div(args)
+local function handle_command_div(args)
   div_by_1e3 = not div_by_1e3
   config[ci_div_by_1e3] = div_by_1e3
   if div_by_1e3 then
@@ -307,19 +309,31 @@ local function handle_div(args)
   end
 end
 
-local function is_affiliated_with_player(flags)
-  return b_and(flags, flag_mine) ~= 0
+local function handle_command_pool(args)
+  local success, result = pcall(floor, args) -- floor can convert string to number
+  if not success then return end
+  if not validate_number_gt0(result) then return end
+  config[ci_pool_size] = result
+  handle_event_addon_loaded(addon_name)
 end
 
-local function has_damage_payload(subevent)
-  return (subevent == "SPELL_PERIODIC_DAMAGE")
-      or (subevent == "SPELL_DAMAGE")
-      or (subevent == "SWING_DAMAGE")
-      or (subevent == "RANGE_DAMAGE")
+local function is_affiliated_with_player(f)
+  return b_and(f, flag_mine) ~= 0
 end
 
-local function handle_cleu()
-  local time, subevent, _, _, _, flags, _, _, _, _, _, dam_swing, _, _, dam_spell = get_cleu_info()
+local function has_damage_payload(s)
+  return (s == "SPELL_PERIODIC_DAMAGE")
+      or (s == "SPELL_DAMAGE")
+      or (s == "SWING_DAMAGE")
+      or (s == "RANGE_DAMAGE")
+end
+
+
+local time, subevent, flags, dam_swing, dam_spell, _
+local damage_lo, time_lo, tdiff
+
+local function handle_event_cleu()
+  time, subevent, _, _, _, flags, _, _, _, _, _, dam_swing, _, _, dam_spell = get_cleu_info()
   if (not has_damage_payload(subevent)) or (not is_affiliated_with_player(flags)) then return end
   if dam_spell then
     damage = damage + dam_spell
@@ -327,8 +341,8 @@ local function handle_cleu()
     damage = damage + dam_swing
   end
   q_push(damage, time)
-  local damage_lo, time_lo = q_first()
-  local tdiff = time - width
+  damage_lo, time_lo = q_first()
+  tdiff = time - width
   while time_lo < tdiff do -- filter stale samples
     damage_lo, time_lo = q_pop()
   end
@@ -338,7 +352,7 @@ local function handle_cleu()
   end 
 end
 
-local function handle_regen_disabled()
+local function handle_event_regen_disabled()
   set_text(text, empty)
   show_frame(frame)
 end
@@ -349,21 +363,22 @@ local function delay_handle()
   damage = 0
 end
 
-local function handle_regen_enabled()
+local function handle_event_regen_enabled()
   if not options[fi_draggable] then
     ct_after(width, delay_handle)
   else
     q_clear()
     damage = 0
+    set_text(text, "%s", format_base)
   end
 end
 
 register_event(frame, event_addon_loaded)
-set_script(frame, "OnEvent", function (_, event, ...) 
-  if     event == event_combat_log_event_unfiltered then handle_cleu(...)
-  elseif event == event_player_regen_enabled        then handle_regen_enabled(...)
-  elseif event == event_player_regen_disabled       then handle_regen_disabled(...)
-  elseif event == event_addon_loaded                then handle_addon_loaded(...)
+set_script(frame, "OnEvent", function (_, event, arg1) 
+  if     event == event_combat_log_event_unfiltered then handle_event_cleu()
+  elseif event == event_player_regen_enabled        then handle_event_regen_enabled()
+  elseif event == event_player_regen_disabled       then handle_event_regen_disabled()
+  elseif event == event_addon_loaded                then handle_event_addon_loaded(arg1)
   end
 end)
 
@@ -373,15 +388,16 @@ SLASH_DDPS2 = "/donage"
 SlashCmdList["DDPS"] = function(c) 
   local cmd, args = extract_args(c)
   local message = nil
-  if     cmd == command_font   then message = handle_font_update(args)
-  elseif cmd == command_format then message = handle_format_update(args)
-  elseif cmd == command_lock   then message = handle_lock(args)
-  elseif cmd == command_locale then message = handle_locale_update(args)
-  elseif cmd == command_toggle then message = handle_toggle_update(args)
-  elseif cmd == command_width  then message = handle_width_update(args)
-  elseif cmd == command_unlock then message = handle_unlock(args)
-  elseif cmd == command_reset  then message = handle_reset(args)
-  elseif cmd == command_div    then message = handle_div(args)
+  if     cmd == command_font   then message = handle_command_font(args)
+  elseif cmd == command_format then message = handle_command_format(args)
+  elseif cmd == command_lock   then message = handle_command_lock(args)
+  elseif cmd == command_locale then message = handle_command_locale(args)
+  elseif cmd == command_toggle then message = handle_command_toggle(args)
+  elseif cmd == command_width  then message = handle_command_width(args)
+  elseif cmd == command_unlock then message = handle_command_unlock(args)
+  elseif cmd == command_reset  then message = handle_command_reset(args)
+  elseif cmd == command_div    then message = handle_command_div(args)
+  elseif cmd == command_pool   then message = handle_command_pool(args)
   else
     message = s_format(l.message_usage, command_usage_string)
   end
