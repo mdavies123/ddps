@@ -70,6 +70,7 @@ local div_by_1e3  = true
 local enabled     = true
 local format_base = "(%.2fK)"
 local frame       = CreateFrame("frame", "ddps_frame")
+local frame_cleu  = CreateFrame("frame", "ddps_frame_cleu")
 local l           = ddps_locale[get_locale()] or ddps_locale["enUS"]
 local multiplier  = 1.0 / 1e3
 local options     = nil
@@ -331,6 +332,7 @@ end
 
 local time, subevent, flags, dam_swing, dam_spell, _
 local damage_lo, time_lo, tdiff
+local tlast = -1.0
 
 local function handle_event_cleu()
   time, subevent, _, _, _, flags, _, _, _, _, _, dam_swing, _, _, dam_spell = get_cleu_info()
@@ -341,15 +343,18 @@ local function handle_event_cleu()
     damage = damage + dam_swing
   end
   q_push(damage, time)
-  damage_lo, time_lo = q_first()
-  tdiff = time - width
-  while time_lo < tdiff do -- filter stale samples
-    damage_lo, time_lo = q_pop()
+  if time > tlast then
+    damage_lo, time_lo = q_first()
+    tdiff = time - width
+    while time_lo < tdiff do -- filter stale samples
+      damage_lo, time_lo = q_pop()
+    end
+    dps = (damage - damage_lo) / (time - time_lo)
+    if validate_number_gt0(dps) then
+      set_text(text, format_base, dps * multiplier)
+    end
+    tlast = time
   end
-  dps = (damage - damage_lo) / (time - time_lo)
-  if validate_number_gt0(dps) then
-    set_text(text, format_base, dps * multiplier)
-  end 
 end
 
 local function handle_event_regen_disabled()
@@ -375,12 +380,14 @@ end
 
 register_event(frame, event_addon_loaded)
 set_script(frame, "OnEvent", function (_, event, arg1) 
-  if     event == event_combat_log_event_unfiltered then handle_event_cleu()
-  elseif event == event_player_regen_enabled        then handle_event_regen_enabled()
+  if     event == event_player_regen_enabled        then handle_event_regen_enabled()
   elseif event == event_player_regen_disabled       then handle_event_regen_disabled()
   elseif event == event_addon_loaded                then handle_event_addon_loaded(arg1)
   end
 end)
+
+register_event(frame_cleu, event_combat_log_event_unfiltered)
+set_script(frame_cleu, "OnEvent", handle_event_cleu)
 
 SLASH_DDPS1 = "/ddps"
 SLASH_DDPS2 = "/donage"
