@@ -64,7 +64,7 @@ local div_by_1e3  = true
 local enabled     = true
 local format_base = "(%.2fK)"
 local frame       = CreateFrame("frame", "ddps_frame")
-local l           = ddps_locale[get_locale()] or ddps_locale["enUS"]
+local l           = _G["ddps_locale"][get_locale()] or _G["ddps_locale"]["enUS"]
 local multiplier  = 1.0 / 1e3
 local options     = nil
 local text        = frame:CreateFontString()
@@ -99,7 +99,7 @@ local q_size  = #q_pool
 
 local function q_new(sz)
   q_size = sz
-  for i = q_size,1,-1 do 
+  for i = q_size,1,-1 do
     q_pool[i] = { [q_idx_d] = 0.0, [q_idx_t] = 0.0 }
   end
   q_first = 1
@@ -155,7 +155,7 @@ local function drag_stop_handle()
     pt = { get_point(frame) }
     options[fi_point] = pt
   else
-    pt[1], pt[2], pt[3], pt[4], pt[5] = get_point(frame)
+    pt[1], pt[2], pt[3], pt[4] = get_point(frame)
   end
 end
 
@@ -177,8 +177,8 @@ local function get_default_config() -- returns copies of default config tables
       [fi_font] = "fonts/frizqt__.ttf",
       [fi_point] = { 
         [1] = "center",
-        [2] = nil, 
-        [3] = 0, 
+        [2] = nil,
+        [3] = 0,
         [4] = 0
       },
       [fi_size] = 10
@@ -255,7 +255,7 @@ end
 local function handle_event_addon_loaded(arg1) -- get saved variables and perform initial setup
   if arg1 ~= addon_name then return end
   config = _G["ddps_config"]
-  if config == nil then
+  if not config then
     config = get_default_config()
     _G["ddps_config"] = config
   end
@@ -264,7 +264,7 @@ local function handle_event_addon_loaded(arg1) -- get saved variables and perfor
   enabled = config[ci_enabled]
   width = config[ci_width]
   div_by_1e3 = config[ci_div_by_1e3]
-  format_base = s_format("%s", config[ci_format_base]) 
+  format_base = s_format("%s", config[ci_format_base])
   refresh_frame()
 end
 
@@ -296,8 +296,8 @@ end
 local function handle_command_lock(args)
   lock_frame()
   set_text(text, empty)
-  if not enabled then 
-    hide_frame(frame) 
+  if not enabled then
+    hide_frame(frame)
   end
   return l.message_locked_frame
 end

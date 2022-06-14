@@ -1,10 +1,10 @@
 -- the donage-beerware license (version 69):
 --
--- donage-stormrage(us) wrote this code 
+-- donage-stormrage(us) wrote this code
 -- as long as you retain this notice, you can do whatever you want with this code
 -- if we meet someday, and you think this stuff is worth it, you can buy me a beer in return
 
-ddps_locale = {
+_G["ddps_locale"] = {
   ["enUS"] = {
     message_div_enabled         = "divide by 1e3 enabled",
     message_div_disabled        = "divide by 1e3 disabled",
