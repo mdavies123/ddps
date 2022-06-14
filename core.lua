@@ -10,12 +10,13 @@ local command_font   = "font"
 local command_format = "format"
 local command_locale = "locale"
 local command_lock   = "lock"
+local command_pool   = "pool"
 local command_width  = "width"
 local command_reset  = "reset"
 local command_toggle = "toggle"
 local command_unlock = "unlock"
 local command_div    = "div"
-local command_usage_string = table.concat({ command_font, command_format, command_locale, command_lock, command_reset, command_width, command_toggle, command_unlock, command_div }, " || ")
+local command_usage_string = table.concat({ command_font, command_format, command_locale, command_lock, command_pool, command_reset, command_width, command_toggle, command_unlock, command_div }, " || ")
 local empty = ""
 
 local event_addon_loaded                = "ADDON_LOADED"
@@ -26,9 +27,7 @@ local events = { event_addon_loaded, event_combat_log_event_unfiltered, event_pl
 
 local flag_mine      = COMBATLOG_OBJECT_AFFILIATION_MINE
 local message_prefix = addon_name .. " - "
-local number_t       = type(0.0)
 local center         = "CENTER"
-local string_t       = type("")
 local table_t        = type(_G)
 
 -- indices for consistent and quick table lookup
@@ -49,7 +48,6 @@ local b_and         = bit.band
 local ct_after      = C_Timer.After
 local floor         = math.floor
 local get_cleu_info = CombatLogGetCurrentEventInfo
-local get_time      = GetTime
 local get_locale    = GetLocale
 local print         = print
 local q_clear       = ddps_queue.clear
@@ -74,7 +72,6 @@ local frame_cleu  = CreateFrame("frame", "ddps_frame_cleu")
 local l           = ddps_locale[get_locale()] or ddps_locale["enUS"]
 local multiplier  = 1.0 / 1e3
 local options     = nil
-local pool_size   = 8192
 local text        = frame:CreateFontString()
 local width       = 5.0
 
@@ -227,7 +224,7 @@ local function handle_event_addon_loaded(arg1) -- get saved variables and perfor
   refresh_frame()
 end
 
-local function handle_font_update(args) -- configures some `frame_options` settings
+local function handle_command_font(args) -- configures some `frame_options` settings
   local field, value = extract_args(args)
   if field == nil then return l.message_font_usage
   elseif options[field] == nil then return s_format(l.message_font_unknown_field, field)
@@ -243,7 +240,7 @@ local function handle_font_update(args) -- configures some `frame_options` setti
   return s_format(l.message_font_changed, field, tostring(value))
 end
 
-local function handle_format_update(args) -- configures `format_base`
+local function handle_command_format(args) -- configures `format_base`
   if (args == nil) or (args == empty) then return s_format(l.message_format_current, format_base) end
   set_format(args)
   if options[fi_draggable] then
@@ -261,7 +258,8 @@ local function handle_command_lock(args)
   return l.message_locked_frame
 end
 
-local function handle_command_toggle()
+local function handle_command_toggle(args)
+  toggle()
   if enabled then return l.message_enabled
   else return l.message_disabled end
 end
@@ -316,6 +314,7 @@ local function handle_command_pool(args)
   if not validate_number_gt0(result) then return end
   config[ci_pool_size] = result
   handle_event_addon_loaded(addon_name)
+  return empty
 end
 
 local function is_affiliated_with_player(f)
@@ -329,10 +328,22 @@ local function has_damage_payload(s)
       or (s == "RANGE_DAMAGE")
 end
 
+local display_promise = false
+
+local function display()
+  local damage_lo, time_lo = q_first()
+  local tdiff = time - width
+  while time_lo < tdiff do -- filter stale samples
+    damage_lo, time_lo = q_pop()
+  end
+  local dps = (damage - damage_lo) / (time - time_lo)
+  if validate_number_gt0(dps) then
+    set_text(text, format_base, dps * multiplier)
+  end
+  display_promise = false
+end
 
 local time, subevent, flags, dam_swing, dam_spell, _
-local damage_lo, time_lo, tdiff
-local tlast = -1.0
 
 local function handle_event_cleu()
   time, subevent, _, _, _, flags, _, _, _, _, _, dam_swing, _, _, dam_spell = get_cleu_info()
@@ -343,17 +354,9 @@ local function handle_event_cleu()
     damage = damage + dam_swing
   end
   q_push(damage, time)
-  if time > tlast then
-    damage_lo, time_lo = q_first()
-    tdiff = time - width
-    while time_lo < tdiff do -- filter stale samples
-      damage_lo, time_lo = q_pop()
-    end
-    dps = (damage - damage_lo) / (time - time_lo)
-    if validate_number_gt0(dps) then
-      set_text(text, format_base, dps * multiplier)
-    end
-    tlast = time
+  if not display_promise then
+    ct_after(0.0, display) -- display on the next frame
+    display_promise = true
   end
 end
 
