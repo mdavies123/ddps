@@ -25,7 +25,6 @@ local event_player_regen_disabled       = "PLAYER_REGEN_DISABLED"
 local event_player_regen_enabled        = "PLAYER_REGEN_ENABLED"
 local events = { event_addon_loaded, event_combat_log_event_unfiltered, event_player_regen_disabled, event_player_regen_enabled }
 
-local flag_mine      = COMBATLOG_OBJECT_AFFILIATION_MINE
 local message_prefix = addon_name .. " - "
 local center         = "CENTER"
 local table_t        = type(_G)
@@ -50,10 +49,7 @@ local floor         = math.floor
 local get_cleu_info = CombatLogGetCurrentEventInfo
 local get_locale    = GetLocale
 local print         = print
-local q_clear       = ddps_queue.clear
-local q_first       = ddps_queue.first
-local q_pop         = ddps_queue.pop
-local q_push        = ddps_queue.push
+
 local pcall         = pcall
 local s_find        = string.find
 local s_format      = string.format
@@ -68,7 +64,6 @@ local div_by_1e3  = true
 local enabled     = true
 local format_base = "(%.2fK)"
 local frame       = CreateFrame("frame", "ddps_frame")
-local frame_cleu  = CreateFrame("frame", "ddps_frame_cleu")
 local l           = ddps_locale[get_locale()] or ddps_locale["enUS"]
 local multiplier  = 1.0 / 1e3
 local options     = nil
@@ -93,6 +88,55 @@ local show_frame            = frame.Show
 local drag_start_handle     = frame.StartMoving
 local stop_moving_or_sizing = frame.StopMovingOrSizing
 local unregister_event      = frame.UnregisterEvent
+
+local q_sample
+local q_first = -1
+local q_last  = -1
+local q_idx_d = false -- just an index for quick table lookup
+local q_idx_t = true
+local q_pool  = {}
+local q_size  = #q_pool
+
+local function q_new(sz)
+  q_size = sz
+  for i = q_size,1,-1 do 
+    q_pool[i] = { [q_idx_d] = 0.0, [q_idx_t] = 0.0 }
+  end
+  q_first = 1
+  q_last = 0
+end
+
+local function q_get_first()
+  q_sample = q_pool[q_first]
+  return q_sample[q_idx_d], q_sample[q_idx_t]
+end
+
+local function q_pop()
+  if q_first == q_size then
+    q_first = 1
+  else
+    q_first = q_first + 1
+  end
+end
+
+local function q_push(d, t)
+  if q_last == q_size then
+    q_last = 1
+  else
+    q_last = q_last + 1
+  end
+  q_sample = q_pool[q_last]
+  q_sample[q_idx_d] = d
+  q_sample[q_idx_t]= t
+end
+
+local function q_clear()
+  q_first = 1
+  q_last = 0
+  q_sample = q_pool[q_first]
+  q_sample[q_idx_d] = 0.0
+  q_sample[q_idx_t]= 0.0
+end
 
 -- helper functions
 local function validate_number_gt0(n) -- filters wow's weird nan situation
@@ -215,7 +259,7 @@ local function handle_event_addon_loaded(arg1) -- get saved variables and perfor
     config = get_default_config()
     _G["ddps_config"] = config
   end
-  ddps_queue.new(config[ci_pool_size])
+  q_new(config[ci_pool_size])
   options = config[ci_options]
   enabled = config[ci_enabled]
   width = config[ci_width]
@@ -317,38 +361,47 @@ local function handle_command_pool(args)
   return empty
 end
 
+local COMBATLOG_OBJECT_AFFILIATION_MINE = COMBATLOG_OBJECT_AFFILIATION_MINE
+
 local function is_affiliated_with_player(f)
-  return b_and(f, flag_mine) ~= 0
+  return b_and(f, COMBATLOG_OBJECT_AFFILIATION_MINE)
 end
 
+local SPELL_PERIODIC_DAMAGE = "SPELL_PERIODIC_DAMAGE"
+local          SPELL_DAMAGE = "SPELL_DAMAGE"
+local          SWING_DAMAGE = "SWING_DAMAGE"
+local          RANGE_DAMAGE = "RANGE_DAMAGE"
+
 local function has_damage_payload(s)
-  return (s == "SPELL_PERIODIC_DAMAGE")
-      or (s == "SPELL_DAMAGE")
-      or (s == "SWING_DAMAGE")
-      or (s == "RANGE_DAMAGE")
+  return (s == SPELL_PERIODIC_DAMAGE)
+      or (s == SPELL_DAMAGE)
+      or (s == SWING_DAMAGE)
+      or (s == RANGE_DAMAGE)
 end
 
 local display_promise = false
 local display_time = 0.0
+local display_damage = 0.0
 
 local function display()
-  local damage_lo, time_lo = q_first()
+  local damage_lo, time_lo = q_get_first()
   local tdiff = display_time - width
   while time_lo < tdiff do -- filter stale samples
-    damage_lo, time_lo = q_pop()
+    q_pop()
+    damage_lo, time_lo = q_get_first()
   end
-  local dps = (damage - damage_lo) / (time - time_lo)
+  local dps = (display_damage - damage_lo) / (display_time - time_lo)
   if validate_number_gt0(dps) then
     set_text(text, format_base, dps * multiplier)
   end
-  display_promise = false
+  display_promise = false -- promise fulfilled
 end
 
 local time, subevent, flags, dam_swing, dam_spell, _
 
 local function handle_event_cleu()
   time, subevent, _, _, _, flags, _, _, _, _, _, dam_swing, _, _, dam_spell = get_cleu_info()
-  if (not has_damage_payload(subevent)) or (not is_affiliated_with_player(flags)) then return end
+  if (not is_affiliated_with_player(flags)) or (not has_damage_payload(subevent)) then return end
   if dam_spell then
     damage = damage + dam_spell
   else
@@ -357,8 +410,9 @@ local function handle_event_cleu()
   q_push(damage, time)
   if not display_promise then
     display_time = time
+    display_damage = damage
     ct_after(0.0, display) -- display on the next frame
-    display_promise = true
+    display_promise = true -- promise made
   end
 end
 
@@ -385,12 +439,13 @@ end
 
 register_event(frame, event_addon_loaded)
 set_script(frame, "OnEvent", function (_, event, arg1) 
-  if     event == event_player_regen_enabled        then handle_event_regen_enabled()
-  elseif event == event_player_regen_disabled       then handle_event_regen_disabled()
-  elseif event == event_addon_loaded                then handle_event_addon_loaded(arg1)
+  if     event == event_player_regen_enabled  then handle_event_regen_enabled()
+  elseif event == event_player_regen_disabled then handle_event_regen_disabled()
+  elseif event == event_addon_loaded          then handle_event_addon_loaded(arg1)
   end
 end)
 
+local frame_cleu  = CreateFrame("frame", "ddps_frame_cleu")
 register_event(frame_cleu, event_combat_log_event_unfiltered)
 set_script(frame_cleu, "OnEvent", handle_event_cleu)
 
