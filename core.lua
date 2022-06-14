@@ -329,10 +329,11 @@ local function has_damage_payload(s)
 end
 
 local display_promise = false
+local display_time = 0.0
 
 local function display()
   local damage_lo, time_lo = q_first()
-  local tdiff = time - width
+  local tdiff = display_time - width
   while time_lo < tdiff do -- filter stale samples
     damage_lo, time_lo = q_pop()
   end
@@ -355,6 +356,7 @@ local function handle_event_cleu()
   end
   q_push(damage, time)
   if not display_promise then
+    display_time = time
     ct_after(0.0, display) -- display on the next frame
     display_promise = true
   end
