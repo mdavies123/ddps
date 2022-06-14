@@ -270,15 +270,15 @@ end
 
 local function handle_command_font(args) -- configures some `frame_options` settings
   local field, value = extract_args(args)
-  if field == nil then return l.message_font_usage
-  elseif options[field] == nil then return s_format(l.message_font_unknown_field, field)
-  elseif (value == nil) or (value == empty) then return s_format(l.message_font_dump, field, tostring(options[field]))
-  elseif field == fi_size then
+  if field == nil then return l.message_font_usage end
+  if options[field] == nil then return s_format(l.message_font_unknown_field, field) end
+  if (value == nil) or (value == empty) then return s_format(l.message_font_dump, field, tostring(options[field])) end
+  if field == fi_size then
     local v = tonumber(value)
-    if v == nil then return s_format(l.message_font_bad_conversion, value)
-    elseif not validate_number_gt0(v) then return l.message_font_size_lt0 end
+    if v == nil then return s_format(l.message_font_bad_conversion, value) end
+    if not validate_number_gt0(v) then return l.message_font_size_lt0 end
     value = v
-  end  
+  end
   options[field] = value
   set_font(text, options[fi_font], options[fi_size], options[fi_flags])
   return s_format(l.message_font_changed, field, tostring(value))
@@ -361,22 +361,16 @@ local function handle_command_pool(args)
   return empty
 end
 
-local COMBATLOG_OBJECT_AFFILIATION_MINE = COMBATLOG_OBJECT_AFFILIATION_MINE
-
-local function is_affiliated_with_player(f)
-  return b_and(f, COMBATLOG_OBJECT_AFFILIATION_MINE)
-end
-
-local SPELL_PERIODIC_DAMAGE = "SPELL_PERIODIC_DAMAGE"
-local          SPELL_DAMAGE = "SPELL_DAMAGE"
-local          SWING_DAMAGE = "SWING_DAMAGE"
-local          RANGE_DAMAGE = "RANGE_DAMAGE"
+local prd = "SPELL_PERIODIC_DAMAGE"
+local spl = "SPELL_DAMAGE"
+local swn = "SWING_DAMAGE"
+local rng = "RANGE_DAMAGE"
 
 local function has_damage_payload(s)
-  return (s == SPELL_PERIODIC_DAMAGE)
-      or (s == SPELL_DAMAGE)
-      or (s == SWING_DAMAGE)
-      or (s == RANGE_DAMAGE)
+  return (s == prd)
+      or (s == spl)
+      or (s == swn)
+      or (s == rng)
 end
 
 local display_promise = false
@@ -397,11 +391,12 @@ local function display()
   display_promise = false -- promise fulfilled
 end
 
+local coam = COMBATLOG_OBJECT_AFFILIATION_MINE
 local time, subevent, flags, dam_swing, dam_spell, _
 
 local function handle_event_cleu()
   time, subevent, _, _, _, flags, _, _, _, _, _, dam_swing, _, _, dam_spell = get_cleu_info()
-  if (not is_affiliated_with_player(flags)) or (not has_damage_payload(subevent)) then return end
+  if (not b_and(flags, coam)) or (not has_damage_payload(subevent)) then return end
   if dam_spell then
     damage = damage + dam_spell
   else
@@ -445,7 +440,7 @@ set_script(frame, "OnEvent", function (_, event, arg1)
   end
 end)
 
-local frame_cleu  = CreateFrame("frame", "ddps_frame_cleu")
+local frame_cleu = CreateFrame("frame", "ddps_frame_cleu")
 register_event(frame_cleu, event_combat_log_event_unfiltered)
 set_script(frame_cleu, "OnEvent", handle_event_cleu)
 
