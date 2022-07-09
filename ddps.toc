@@ -6,6 +6,9 @@
 ## version: 1.1.1
 ## savedvariables: ddps_config
 
-queue.lua
+config.lua
 locale.lua
+frame.lua
+queue.lua
+cleu.lua
 core.lua

@@ -83,13 +83,13 @@ local get_point             = frame.GetPoint
 local hide_frame            = frame.Hide
 local register_event        = frame.RegisterEvent
 local register_for_drag     = frame.RegisterForDrag
-local set_font              = text.SetFont
+local set_font              =  text.SetFont
 local set_height            = frame.SetHeight
 local set_movable           = frame.SetMovable
-local set_parent            = text.SetParent
+local set_parent            =  text.SetParent
 local set_point             = frame.SetPoint
 local set_script            = frame.SetScript
-local set_text              = text.SetFormattedText
+local set_text              =  text.SetFormattedText
 local set_width             = frame.SetWidth
 local show_frame            = frame.Show
 local drag_start_handle     = frame.StartMoving
@@ -317,39 +317,11 @@ local function handle_command_pool(args)
   handle_event_addon_loaded(addon_name)
 end
 
-local function is_affiliated_with_player(f)
-  return b_and(f, flag_mine) ~= 0
-end
-
 local function has_damage_payload(s)
   return (s == "SPELL_PERIODIC_DAMAGE")
       or (s == "SPELL_DAMAGE")
       or (s == "SWING_DAMAGE")
       or (s == "RANGE_DAMAGE")
-end
-
-
-local time, subevent, flags, dam_swing, dam_spell, _
-local damage_lo, time_lo, tdiff
-
-local function handle_event_cleu()
-  time, subevent, _, _, _, flags, _, _, _, _, _, dam_swing, _, _, dam_spell = get_cleu_info()
-  if (not has_damage_payload(subevent)) or (not is_affiliated_with_player(flags)) then return end
-  if dam_spell then
-    damage = damage + dam_spell
-  else
-    damage = damage + dam_swing
-  end
-  q_push(damage, time)
-  damage_lo, time_lo = q_first()
-  tdiff = time - width
-  while time_lo < tdiff do -- filter stale samples
-    damage_lo, time_lo = q_pop()
-  end
-  dps = (damage - damage_lo) / (time - time_lo)
-  if validate_number_gt0(dps) then
-    set_text(text, format_base, dps * multiplier)
-  end 
 end
 
 local function handle_event_regen_disabled()
